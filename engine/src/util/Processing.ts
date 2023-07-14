@@ -1,8 +1,10 @@
 import { extractTimestampFromLiteral, TREE, turtleStringToStore } from "@treecg/versionawareldesinldp";
 import { Quad, Quad_Subject, Store, DataFactory, Literal } from "n3";
 const namedNode = DataFactory.namedNode;
-import { Resource } from "./EventSource";
 import { existsSync, readFileSync } from "fs";
+
+// The semantics of Resource is the data point itself (!! not to be confused with an ldp:Resource)
+export type Resource = Quad[]
 
 /**
  * Returns all the triples as a store from a file at a given filepath

@@ -35,28 +35,16 @@ import express from 'express';
 // CORS is a node.js package for providing a Connect/Express middleware that can be used to enable CORS with various options.
 // [https://www.npmjs.com/package/cors]
 import cors = require('cors');
-// The N3.js library is an implementation of the RDF.js low-level specification that lets you handle RDF in JavaScript easily.
-// [https://www.npmjs.com/package/n3]
-import { Quad_Subject } from "n3";
-// These are the methods and classes from the EventSource-utility package.
-// [https://github.com/woutslabbinck/SolidEventSourcing]
-import { getTimeStamp, prefixesFromFilepath, resourceToOptimisedTurtle, Resource, initSession } from "./util/EventSource";
-// These are the methods and classes from the EventSource-processing package.
-// [https://github.com/woutslabbinck/SolidEventSourcing]
-import { extractResources, batchResources } from "./util/Processing";
-// The required naive aalgorithm to support LDES in LDP rebalancing of the buckets.
-// [https://github.com/woutslabbinck/SolidEventSourcing]
-import { naiveAlgorithm } from "./algorithms/Naive";
+// LDESTS management
+import { LDESTS, Shape } from "ldests"
 // The logger as specifically used by versionawareldesinldp.
 // [https://www.npmjs.com/package/@treecg/versionawareldesinldp]
 import { Logger } from "@treecg/versionawareldesinldp/dist/logging/Logger";
-// The necessary Solid/LDES/LDP methods and classes from the VersionAwareLDESinLDP.
-// [https://www.npmjs.com/package/@treecg/versionawareldesinldp]
-import { SolidCommunication, LDPCommunication, LDESinLDP, LDESMetadata, RDF, LDES, extractLdesMetadata, LDESConfig } from "@treecg/versionawareldesinldp"
 // Load the config file with the values of all constants. This import style requires "esModuleInterop"
 import * as propsJson from './config/replay_properties.json';
 // Importing the OS module to get the hostname.
 import * as os from 'os';
+import { NamedNode, Quad, Store } from 'n3';
 
 //***********************************************************************************************************
 // REQUIRES																									*
@@ -76,25 +64,45 @@ const { Subject } = require('await-notify');
 const app = express();
 //This is the back-end port to be used for the WebAPI.
 const port = propsJson.port;
-const batchSize = propsJson.batchSize;
 const loglevel = propsJson.loglevel;
 const logger = new Logger(propsJson.logname, loglevel);
 //Local Path to where the available datasets can be found.
 const datasetFolders: Array<string> = [propsJson.datasetFolders];
 //In case of Authentication this const contains the path to the credentials file. Ohterise: NULL.
 const credentialsFileName = null;
-//The URL of the Solid POD to be used.
-const lilURL = propsJson.lilURL;
-//The URI of the ordering property.
-const treePath = propsJson.treePath;
-//Size of the visualisation of observations.
-const chunkSize = propsJson.chunkSize;
-//BucketSize of the LDES to be used.
-const bucketSize = propsJson.bucketSize;
-//Targetted Resource Size per bucket.
-const targetResourceSize = propsJson.targetResourceSize;
+// The shape used with the stream
+const shape = buildShape();
+// The resulting stream, retrieved and set async
+let stream: LDESTS
+buildStream().then((result) => stream = result);
 
 const event = new Subject();
+
+// builders
+
+function buildShape() {
+	const config = propsJson.shape;
+	const builder = new Shape.Builder(config.type, config.identifier);
+	for (const consts in config.constants) {
+		builder.constant(consts, config.constants[consts]);
+	}
+	for (const vars in config.variables) {
+		builder.variable(vars, config.variables[vars], 1);
+	}
+	return builder.build();
+}
+
+async function buildStream() {
+	const config = propsJson
+	const builder = new LDESTS.Builder(config.ldestsName)
+        .config({ 'window': config.window, 'resourceSize': config.resourceSize })
+        .shape(shape)
+		.attachSolidPublisher(config.ldestsPod);
+	for (const uris of config.queryURIs) {
+		builder.queryUri("https://saref.etsi.org/core/measurementMadeBy")
+	}
+    return await builder.create();
+}
 
 
 //***********************************************************************************************************
@@ -102,12 +110,12 @@ const event = new Subject();
 //***********************************************************************************************************
 
 //This N3-store will be used as main knowledge container.
-var store = new N3.Store();
+var store: Store = new N3.Store();
 //Internal variable containing all subject URIs of the measurement in the dataset.
 var observationSubjects: Array<string>;
 //Internal variable containing the full Resoure as represetend above by URI(string), 
 //but now also sorted according to the treePath.
-var sortedObservationSubjects: Array<Resource>;
+var sortedObservationSubjects: Array<NamedNode> = [];
 //Internal variable representing the index of replay (single user - single threaded).
 var observationPointer: number = 0;
 //Internal variable to keep track of the Authentication session object in case needed.
@@ -116,10 +124,6 @@ var session;
 var autoplay = false;
 //Time-out until the next observation to be replayed.
 var newDifference;
-
-//The following variables are needed for the storage optimisation as implemented by Tom Windels.
-let prefixFile;
-let amount;
 
 //***********************************************************************************************************
 // INIT																										*
@@ -186,15 +190,15 @@ app.get('/loadDataset', (req, res) => {
 			store.add(quad);
 			done();
 		};
-		return writer;
 		res.send(jsonResult);
+		return writer;
 	}
 });
 
 // Utility method for the front-end to check up on the loading progress.
 app.get('/checkLoadingSize', (req, res) => {
 	let jsonResult = [];
-	jsonResult.push(store.countQuads());
+	jsonResult.push(store.countQuads(null, null, null, null));
 	logger.info("The size of the loaded dataset: " + jsonResult + " quads");
 	res.send(jsonResult);
 });
@@ -217,13 +221,10 @@ app.get('/checkObservationCount', (req, res) => {
 // Returns the information that is currently being referenced by the pointer, and thus is next
 // to be replayed.
 app.get('/checkPointer', (req, res) => {
-	let jsonResult = [];
-	let tempResources = [];
+	let jsonResult = [[]];
 	for (const quad of store.match(sortedObservationSubjects[observationPointer], null, null)) {
-		logger.debug(quad);
-		tempResources.push(quad);
+		jsonResult[0].push(quad);
 	}
-	jsonResult.push(tempResources);
 	res.send(jsonResult);
 });
 
@@ -264,10 +265,7 @@ app.get('/sortObservations', async (req, res) => {
 	// Up until now we sorted based on the String, representing the URI
 	// of the Observations. This now also needs to be converted into namedNodes,
 	// to facilitate quicker processing later on.
-	sortedObservationSubjects = new Array<Resource>();
-	sortedTemp.forEach(function (value) {
-		sortedObservationSubjects.push(namedNode(value));
-	});
+	sortedObservationSubjects = sortedTemp.map((subj) => namedNode(subj));
 
 	let jsonResult = [];
 	jsonResult.push(sortedTemp);
@@ -327,19 +325,20 @@ function merge(list1: string[], list2: string[]): string[] {
 app.get('/getObservations', (req, res) => {
 	let finalResult = [];
 
-	// A chunck with the first chunkSize (10).	
-	logger.info("Getting the FIRST " + chunkSize + " observations from the loaded store.");
-	const chunk = sortedObservationSubjects.slice(0, chunkSize);
-	logger.debug(chunk + "");
-	finalResult = finalResult.concat(chunk);
-	logger.debug(finalResult + "");
+	// FIXME: if the web-app doesn't function properly, this will have to be re-implemented at some point!
+	// // A chunck with the first chunkSize (10).	
+	// logger.info("Getting the FIRST " + chunkSize + " observations from the loaded store.");
+	// const chunk = sortedObservationSubjects.slice(0, chunkSize);
+	// logger.debug(chunk + "");
+	// finalResult = finalResult.concat(chunk);
+	// logger.debug(finalResult + "");
 
-	// A chunck with the last chunkSize (10).	
-	logger.info("Getting the LAST " + chunkSize + " observations from the loaded store.");
-	const chunk2 = sortedObservationSubjects.slice(sortedObservationSubjects.length - chunkSize, sortedObservationSubjects.length);
-	logger.debug(chunk2 + "");
-	finalResult.push("...");
-	finalResult = finalResult.concat(chunk2);
+	// // A chunck with the last chunkSize (10).	
+	// logger.info("Getting the LAST " + chunkSize + " observations from the loaded store.");
+	// const chunk2 = sortedObservationSubjects.slice(sortedObservationSubjects.length - chunkSize, sortedObservationSubjects.length);
+	// logger.debug(chunk2 + "");
+	// finalResult.push("...");
+	// finalResult = finalResult.concat(chunk2);
 
 	res.send(finalResult);
 });
@@ -352,96 +351,24 @@ async function advanceOneObservation() {
 	observationPointer++;
 
 	logger.info("We're going to replay ONE observation and its related information from the current pointer onwards: " + observationPointerTemp);
-	logger.info("That observation is: " + sortedObservationSubjects[observationPointerTemp] + "");
+	logger.info("That observation is: " + sortedObservationSubjects[observationPointerTemp].value + "");
 
 	if (typeof sortedObservationSubjects[observationPointerTemp] === 'undefined') {
 		autoplay = false;
 	} else {
-		//Integrate EventSource library here!
-		//Authentication with the Solid Pod.
-		const s = await initSession(credentialsFileName);
-		if (s) {
-			logger.info(`User logged in: ${s.info.webId}`)
-		}
-		session = s;
-
-		// Retrieve metadata of LDSinLDP if it already exists
-		logger.info("Retrieving metadata of LDESinLDP if it already exists.");
-		const comm = session ? new SolidCommunication(session) : new LDPCommunication();
-		const lil = new LDESinLDP(lilURL, comm);
-		let metadata: LDESMetadata | undefined
-
-		try {
-			const metadataStore = await lil.readMetadata()
-			const ldes = metadataStore.getSubjects(RDF.type, LDES.EventStream, null)
-			if (ldes.length > 1) {
-				logger.info(`Multiple LDESes detected. ${ldes[0].value} was extracted`)
-			}
-			metadata = extractLdesMetadata(metadataStore, ldes[0].value)
-		} catch (e) {
-			logger.info("NO LDES PRESENT");
-			// the LDES in LDP does not exist if this fails -> there is no metadata.
-		}
-
-		//Construct the EventStream URI as per agreement, i.e. LIL url concat #EventStream
-		const eventStreamURI = metadata ? metadata.ldesEventStreamIdentifier : lilURL + '#EventStream';
-		logger.debug(eventStreamURI);
-		logger.debug("sortedObservationSubjects.length: " + sortedObservationSubjects.length);
-		if (sortedObservationSubjects.length === 0) {
-			logger.info(`No valid source data found. Exiting...`);
-			return;
-		}
-
 		//Retrieving the set of all information/all triples currently related to the Observation being 	
 		//identified by the Pointer the Observation itself.
 		logger.info("Retrieving all related information to the Observation being replayed.");
-		let finalResources = [];
-		let tempResources = [];
+		const finalResources: Quad[] = [];
 		for (const quad of store.match(sortedObservationSubjects[observationPointerTemp], null, null)) {
-			logger.debug(quad);
-			tempResources.push(quad);
+			finalResources.push(quad as Quad);
 		}
-		finalResources.push(tempResources);
 		logger.debug(finalResources + "");
-
-		//Now we're optimising the size of the buckets in the POD.
-		logger.info("Calculating the optimal size of the buckets in the pod.");
-		const prefixes = await prefixesFromFilepath(prefixFile, lilURL);
-		const config: LDESConfig = {
-			LDESinLDPIdentifier: lilURL,
-			treePath: treePath,
-			versionOfPath: "1.0"
-		}
-
-		// grouping resources from sortedObservationSubjects together based on size of a single resource and the target resource
-		// size
-		// assume every sourceResource entry is of the same length (on average) to calculate the number of resources
-		// that are to be grouped together
-		logger.debug("targetResourceSize: " + targetResourceSize);
-		const resourceGroupCount = 1 + Math.floor(targetResourceSize / resourceToOptimisedTurtle(finalResources[0], prefixes).length);
-		const resources = batchResources(finalResources, resourceGroupCount);
-
-		let amountResources: number = amount
-		// if input is not a number use the entire collection
-		if (isNaN(amount)) {
-			amountResources = sortedObservationSubjects.length
-		}
-
-		logger.info("The amount of Resources per bucket is: " + amountResources);
-		logger.debug(sortedObservationSubjects + "");
-		logger.debug(sortedObservationSubjects[observationPointerTemp] + "");
-
-		logger.info(`Resources per UUID: ${resourceGroupCount}`)
-		logger.info("Naive algorithm (SINGLE): Execution for " + amountResources + " resources with a bucket size of " + bucketSize);
-
-		logger.debug(lilURL);
-		logger.debug(finalResources + "");
-		logger.debug(treePath);
-		logger.debug(bucketSize + "");
-		logger.debug(config + "");
-		logger.debug(session);
-		logger.debug(loglevel);
-		await naiveAlgorithm(lilURL, finalResources, treePath, bucketSize, config, prefixes, session, loglevel);
+		// inserting the resulting resources into the stream
+		logger.info(`Inserting ${finalResources.length} resources`)
+		await stream.insertStore(finalResources);
+		// manually flushing so the results are visible
+		await stream.flush();
 
 		event.notify();
 	}
@@ -462,42 +389,6 @@ app.get('/advanceAndPushObservationPointer', async (req, res) => {
 app.get('/advanceAndPushObservationPointerToTheEnd', async (req, res) => {
 	logger.info("We're going to replay the REMAINING observations and their related information from the current pointer onwards: " + observationPointer);
 	let jsonResult = [];
-
-	//Integrate EventSource library here!
-	//Authentication with the Solid Pod.
-	const s = await initSession(credentialsFileName);
-	if (s) {
-		logger.info(`User logged in: ${s.info.webId}`)
-	}
-	session = s;
-
-	// Retrieve metadata of LDSinLDP if it already exists
-	logger.info("Retrieving metadata of LDESinLDP if it already exists.");
-	const comm = session ? new SolidCommunication(session) : new LDPCommunication();
-	const lil = new LDESinLDP(lilURL, comm);
-	let metadata: LDESMetadata | undefined
-
-	try {
-		const metadataStore = await lil.readMetadata()
-		const ldes = metadataStore.getSubjects(RDF.type, LDES.EventStream, null)
-		if (ldes.length > 1) {
-			logger.info(`Multiple LDESes detected. ${ldes[0].value} was extracted`)
-		}
-		metadata = extractLdesMetadata(metadataStore, ldes[0].value)
-	} catch (e) {
-		logger.info("NO LDES PRESENT");
-		// the LDES in LDP does not exist if this fails -> there is no metadata.
-	}
-
-	//Construct the EventStream URI as per agreement, i.e. LIL url concat #EventStream
-	const eventStreamURI = metadata ? metadata.ldesEventStreamIdentifier : lilURL + '#EventStream';
-	logger.debug(eventStreamURI);
-	logger.debug("sortedObservationSubjects.length: " + sortedObservationSubjects.length);
-	if (sortedObservationSubjects.length === 0) {
-		logger.info(`No valid source data found. Exiting...`);
-		return;
-	}
-
 	//Retrieving the set of all information/all triples currently related to the Observation being 
 	//identified by the Pointer to the Observation itself.
 	logger.info("Retrieving all related information to the Observation being replayed.");
@@ -506,72 +397,44 @@ app.get('/advanceAndPushObservationPointerToTheEnd', async (req, res) => {
 	logger.info("observation Pointer: " + observationPointer);
 	logger.info("sorted Observation Subjects length:" + sortedObservationSubjects.length);
 
-	while (observationPointer < sortedObservationSubjects.length) {
-		logger.info("BATCH nr: " + batchnr);
-		batchnr++;
+	// FIXME: reintroduce some of these consts
+	// while (observationPointer < sortedObservationSubjects.length) {
+	// 	logger.info("BATCH nr: " + batchnr);
+	// 	batchnr++;
 
-		let finalResources = [];
-		let amount = 0;
-		for (let i = observationPointer; i < sortedObservationSubjects.length && i - observationPointer < batchSize; i++) {
-			amount++;
-			logger.info("resource: " + i);
-			let tempResources = [];
-			for (const quad of store.match(sortedObservationSubjects[i], null, null)) {
-				logger.debug(quad);
-				tempResources.push(quad);
-			}
-			finalResources.push(tempResources);
-		}
-		logger.debug(finalResources + "");
+	// 	let finalResources = [];
+	// 	let amount = 0;
+	// 	for (let i = observationPointer; i < sortedObservationSubjects.length && i - observationPointer < batchSize; i++) {
+	// 		amount++;
+	// 		logger.info("resource: " + i);
+	// 		let tempResources = [];
+	// 		for (const quad of store.match(sortedObservationSubjects[i], null, null)) {
+	// 			logger.debug(quad);
+	// 			tempResources.push(quad);
+	// 		}
+	// 		finalResources.push(tempResources);
+	// 	}
+	// 	logger.debug(finalResources + "");
 
-		//Now we're optimising the size of the buckets in the POD.
-		logger.info("Calculating the optimal size of the buckets in the pod.");
-		const prefixes = await prefixesFromFilepath(prefixFile, lilURL);
-		const config: LDESConfig = {
-			LDESinLDPIdentifier: lilURL,
-			treePath: treePath,
-			versionOfPath: "1.0"
-		}
+	// 	// grouping resources from sortedObservationSubjects together based on size of a single resource and the target resource
+	// 	// size
+	// 	// assume every sourceResource entry is of the same length (on average) to calculate the number of resources
+	// 	// that are to be grouped together
+	// 	logger.debug("targetResourceSize: " + targetResourceSize);
 
-		// grouping resources from sortedObservationSubjects together based on size of a single resource and the target resource
-		// size
-		// assume every sourceResource entry is of the same length (on average) to calculate the number of resources
-		// that are to be grouped together
-		logger.debug("targetResourceSize: " + targetResourceSize);
-		const resourceGroupCount = 1 + Math.floor(targetResourceSize / resourceToOptimisedTurtle(finalResources[0], prefixes).length);
-		const resources = batchResources(finalResources, resourceGroupCount);
-
-		let amountResources: number = amount
-		// if input is not a number use the entire collection
-		if (isNaN(amount)) {
-			amountResources = sortedObservationSubjects.length
-		}
-
-		logger.info("The amount of Resources per bucket is: " + amountResources);
-		logger.debug(sortedObservationSubjects + "");
-		logger.debug(sortedObservationSubjects[observationPointer] + "");
-
-		logger.info(`Resources per UUID: ${resourceGroupCount}`)
-		logger.info("Naive algorithm (END): Execution for " + amountResources + " resources with a bucket size of " + bucketSize);
-		// Move the pointer to the end further in the datatset.
-		observationPointer = observationPointer + amountResources;
-		logger.info("New POINTER position:" + observationPointer);
-
-		// Inform the caller about the new pointer value.
-		jsonResult.push(observationPointer);
-
-		logger.debug(lilURL);
-		logger.debug(finalResources + "");
-		logger.debug(treePath);
-		logger.debug(bucketSize + "");
-		logger.debug(config + "");
-		logger.debug(session);
-		logger.debug(loglevel);
-
-
-		await naiveAlgorithm(lilURL, finalResources, treePath, bucketSize, config, prefixes, session, loglevel);
-
-	}
+	// 	let amountResources: number = amount
+	// 	// if input is not a number use the entire collection
+	// 	if (isNaN(amount)) {
+	// 		amountResources = sortedObservationSubjects.length
+	// 	}
+	// 	// Move the pointer to the end further in the datatset.
+	// 	observationPointer = observationPointer + amountResources;
+	// 	logger.info("New POINTER position:" + observationPointer);
+	// 	// inserting the resulting resources into the stream
+	// 	stream.insertBulk(finalResources);
+	// 	// manually flushing so the results are visible
+	// 	await stream.flush();
+	// }
 
 	res.send(jsonResult);
 });

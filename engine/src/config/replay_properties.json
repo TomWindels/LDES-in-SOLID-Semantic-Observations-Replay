@@ -3,12 +3,29 @@
 	"loglevel": "info",
 	"logname": "WEB API",
 	"__comment__" : "enter the location of your dataset folder below this in datasetFolders field. e.g. /home/data/",
-	"datasetFolders": "C:\\data",
-	"credentialsFileName": null,
-	"lilURL": "http://localhost:3000/test/",
-	"treePath": "https://saref.etsi.org/core/hasTimestamp",
-	"chunkSize": 10,
-	"bucketSize": 1000,
-	"targetResourceSize": 1024,
-	"batchSize": 10000
+	"datasetFolders": "./data/",
+	"ldestsPod": "http://localhost:3000",
+	"ldestsName": "test",
+	"shape": {
+		"type": "https://saref.etsi.org/core/Measurement",
+		"identifier": "https://saref.etsi.org/core/hasTimestamp",
+		"constants": {
+			"http://rdfs.org/ns/void#inDataset": ["https://dahcc.idlab.ugent.be/Protego/_participant1"],
+			"https://saref.etsi.org/core/measurementMadeBy": [
+				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/Smartphone/OnePlus_IN2023",
+				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/Smartphone/Samsung_S10"
+			],
+			"https://saref.etsi.org/core/relatesToProperty": [
+				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/x",
+				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/y",
+				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/z"
+			]
+		},
+		"variables": {
+			"https://saref.etsi.org/core/hasValue": "http://www.w3.org/2001/XMLSchema#float"
+		}
+	},
+	"queryURIs": ["https://saref.etsi.org/core/measurementMadeBy"],
+	"window": 5,
+	"resourceSize": 2500
 }
