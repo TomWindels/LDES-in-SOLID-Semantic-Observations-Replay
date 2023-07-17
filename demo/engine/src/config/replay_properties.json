@@ -5,25 +5,17 @@
 	"ldestsPod": "http://localhost:3000",
 	"ldestsName": "test",
 	"shape": {
-		"type": "https://saref.etsi.org/core/Measurement",
-		"identifier": "https://saref.etsi.org/core/hasTimestamp",
+		"type": "SAMPLE URI HERE",
+		"identifier": "SAMPLE IDENTIFIER HERE",
 		"constants": {
-			"http://rdfs.org/ns/void#inDataset": ["https://dahcc.idlab.ugent.be/Protego/_participant1"],
-			"https://saref.etsi.org/core/measurementMadeBy": [
-				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/Smartphone/OnePlus_IN2023",
-				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/Smartphone/Samsung_S10"
-			],
-			"https://saref.etsi.org/core/relatesToProperty": [
-				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/x",
-				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/y",
-				"https://dahcc.idlab.ugent.be/Ontology/SensorsAndWearables/SmartphoneAcceleration/z"
-			]
+			"SAMPLE CONSTANT PATH HERE": ["ALL SAMPLE CONSTANT VALUES HERE"],
+			"OTHER SAMPLE CONSTANT PATHS HERE": ["..."]
 		},
 		"variables": {
-			"https://saref.etsi.org/core/hasValue": "http://www.w3.org/2001/XMLSchema#float"
+			"SAMPLE VARIABLE PATH HERE": "SAMPLE VARIABLE DATATYPE HERE"
 		}
 	},
-	"queryURIs": ["https://saref.etsi.org/core/measurementMadeBy"],
+	"queryURIs": ["ALL SAMPLE CONSTANT FRAGMENT URIS HERE"],
 	"window": 5,
 	"resourceSize": 2500
 }

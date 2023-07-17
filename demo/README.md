@@ -208,7 +208,7 @@ You find a screen below.
 https://user-images.githubusercontent.com/19285142/230097455-26d40ebd-6852-4372-9057-81698d74e93e.mp4
 
 ## Support
-Stijn.Verstichel@UGent.be
+\[REDACTED\]
 
 ## Roadmap
 A connector is required that investigates the LDES, computes the need for a new bucket and adds the events of the stream either to a new bucket or to an existing one based on the timestamps of these events. In more detail the following functionality is required:
