@@ -6,6 +6,7 @@ A demo using a subset of the [DAHCC](https://dahcc.idlab.ugent.be/dataset.html) 
 
 https://github.com/TomWindels/LDESTS-demo/assets/57372186/d8cf225e-a8fd-4e26-9fcf-493c97c45bb7
 
+[Click here to open the video in a new tab](https://github-production-user-asset-6210df.s3.amazonaws.com/57372186/253955553-d8cf225e-a8fd-4e26-9fcf-493c97c45bb7.mp4)
 
 ## Trying the demo yourself
 **Notice**: The demo has only been tested on Linux machines, but other platforms should function just fine after making minor adjustments to the commands listed below. Make sure the commands `git`, `npm` and `yarn` are available first.
