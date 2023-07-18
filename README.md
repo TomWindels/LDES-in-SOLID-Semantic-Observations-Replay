@@ -20,7 +20,7 @@ Both `engine` and `webapp` have their own sets of dependencies, which can be ins
 ```
 [user@host LDESTS-demo]$ cd demo/engine
 [user@host engine]$ npm i
-[user@host LDESTS-demo]$ cd ../webapp
+[user@host engine]$ cd ../webapp
 [user@host webapp]$ npm i
 ```
 The demo can be configured in `demo/engine/src/config/replay_properties.json`. A more in-depth explanation about this configuration can be found in `demo/README.md`. The most important properties to configure are the `datasetFolders` location (configured by default to be at `demo/engine/data`) and the data's `shape`.\
