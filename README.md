@@ -16,7 +16,13 @@ First, the LDESTS implementation has to be built from source, as the demo depend
 [user@host lib]$ ./gradlew jsLibrary:jsBuild
 ```
 After this has completed, the library (found in `lib/bin/js`) can be used by the demo. More details about the build process can be found in `lib/README.md`.
-
+Both `engine` and `webapp` have their own sets of dependencies, which can be installed by executing `npm i` in their respective folders:
+```
+[user@host LDESTS-demo]$ cd demo/engine
+[user@host engine]$ npm i
+[user@host LDESTS-demo]$ cd ../webapp
+[user@host webapp]$ npm i
+```
 The demo can be configured in `demo/engine/src/config/replay_properties.json`. A more in-depth explanation about this configuration can be found in `demo/README.md`. The most important properties to configure are the `datasetFolders` location (configured by default to be at `demo/engine/data`) and the data's `shape`.\
 Before running the demo, it is important to have a Solid server running that you can modify freely. Make sure the URL matches the one set in `demo/engine/src/config/replay_properties.json`. We used a locally running [Community Solid Server](https://github.com/CommunitySolidServer/CommunitySolidServer) instance with the default configuration for this demo.
 ### Running
