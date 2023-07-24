@@ -4,7 +4,7 @@ LDESTS aims to make time series data streams using RDF feasible on platforms suc
 ## Currently supported
 This tool is developed using [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html), allowing for multiple target platforms. Currently, **only JS/TS on Node.js is supported**. There are currently **no** plans to **support JS/TS on Web**. There are plans to add Java (and Android) integration **at a later stage**.
 ## Getting started
-**Notice:** building from source has only been tested on **Linux**. While the build process should work for any platform capable of using Gradle, other platforms have not been tested. If you come across an issue building the library from source, be sure to let us know by creating an [issue](https://github.com/SolidLabResearch/LDESTS/issues/new).
+**Notice:** building from source has only been tested on **Linux**. While the build process should work for any platform capable of using Gradle, other platforms have not been tested. If you come across an issue building the library from source, be sure to let us know by creating an [issue](REDACTED).
 ### JS/TS on Node.js
 #### NPM
 Currently, **no NPM releases are available** due to the use of unreleased dependencies and unusual project hierarchy. If you want to integrate LDESTS in your own project right now, you have to build the library from source.
@@ -13,7 +13,7 @@ The build process requires the commands `git`, `yarn` and `npm` to function, so 
 Begin by cloning the repository to a known location:
 
 ```
-[user@host ~]$ git clone https://github.com/SolidLabResearch/LDESTS.git
+[user@host ~]$ git clone REDACTED
 ```
 Next, navigate to the new folder and start the building process:
 ```

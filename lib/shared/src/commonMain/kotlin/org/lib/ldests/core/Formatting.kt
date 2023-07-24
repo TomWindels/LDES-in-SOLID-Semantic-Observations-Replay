@@ -160,8 +160,8 @@ internal fun SHAPE_SPARQL_QUERY_FOR_STREAM(stream: NamedNodeTerm) = Query("""
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 SELECT ?shapeTarget ?propType ?propPath ?propKind ?propDType ?propDefValue ?propValues ?propStart ?propEnd WHERE {
-    <${stream.value}> a <https://predict.ugent.be/ldests#Node> .
-    <${stream.value}> <https://predict.ugent.be/ldests#shape> ?shape .
+    <${stream.value}> a <${LDESTS.StreamType.value}> .
+    <${stream.value}> <${LDESTS.shape.value}> ?shape .
     ?shape a <${SHAPETS.Type.value}> .
     ?shape <${SHACL.property.value}> ?shapeProperty .
     ?shape <${SHACL.targetClass.value}> ?shapeTarget .
